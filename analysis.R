@@ -56,6 +56,12 @@ clean_clinical_signs <- function(df){
       hyporexia   = (clinical_signs1 %>% str_detect("hyporexia"))
     )
 }
+clean_breed <- function(df){
+  df %>% 
+    mutate(breed = breed %>% tolower()) %>% 
+    mutate(breed = breed %>% stringr::str_replace_all(" ", "_")) %>% 
+    mutate(breed = ifelse(breed == "dhs", "dsh", breed))
+}
 
 raw_data <-
   readxl::read_excel("data/datos_bp.xlsx") %>%
@@ -64,7 +70,8 @@ raw_data <-
   clean_death() %>%
   clean_ckd() %>% 
   create_variables() %>% 
-  clean_clinical_signs()
+  clean_clinical_signs() %>% 
+  clean_breed()
 
 
 # Death vs Kidney Disease vs Proteinuria ----------------------------------
@@ -378,6 +385,44 @@ for(group in study_groups){
 }
 g
 
+
+
+# UPCR vs Breed  ------------------------------------------------------------
+raw_data %>%
+  select(healthy, upcr1, breed) %>%
+  na.omit() %>%
+  filter(upcr1 < 5) %>%
+  mutate(healthy = ifelse(healthy == "No", "Sick", "Healthy")) %>% 
+  ggplot(aes(x = reorder(breed, (upcr1)), y = upcr1, colour = breed)) +
+  facet_wrap(healthy~., scales = 'free_x') +
+  geom_boxplot(size = 1, outlier.shape = NA) +
+  geom_jitter(size = 5, width = 0.1, alpha = 0.25) +
+  gameofthrones::scale_colour_got_d(option = "margaery", guide = FALSE) +
+  coord_flip() +
+  xlab('') +
+  ylab("UPCR") +
+  theme_pubr() +
+  labs(
+    title = "UPCR related to animal's breed"
+  )
+
+
+# UPCR vs Sex -------------------------------------------------------------
+raw_data %>%
+  select(sex, upcr1) %>%
+  na.omit() %>%
+  filter(upcr1 < 5) %>%
+  ggplot(aes(x = sex, y = upcr1, colour = sex)) +
+  geom_boxplot(size = 1, outlier.shape = NA) +
+  geom_jitter(size = 5, width = 0.1, alpha = 0.25) +
+  stat_compare_means(method = "wilcox.test") +
+  gameofthrones::scale_colour_got_d(labels = c("Female", "Male"), option = "margaery", guide = FALSE, direction = -1) +
+  theme_pubr() +
+  xlab("") +
+  ylab("") +
+  scale_x_discrete(labels = c("Female", "Male")) +
+  ggtitle("Relationship between proteinuria levels and Sex") +
+  labs(subtitle = "There is NOT enough statistical evidence to confirm such difference")
 
 # Other metrics vs Mortality ----------------------------------------------
 
